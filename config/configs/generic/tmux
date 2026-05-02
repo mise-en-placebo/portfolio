@@ -1,0 +1,41 @@
+[config:*]
+# Setting Ctrl-h to prefix
+
+unbind C-b
+set -g prefix C-h
+bind-key C-h send-prefix
+
+bind-key R source ~/.tmux.conf
+
+# Colors
+
+[config:local,shrek]
+set -g message-style bg=#000000,fg=#ffffff
+set -g status-style  bg=#000000,fg=#ffffff
+[config:snargle,devin]
+set -g message-bg default
+set -g message-fg default
+[config:*]
+set -g mode-style reverse
+
+# Status
+
+[config:-local]
+set -g status-fg default
+set -g status-bg default
+
+[config:*]
+set -g status-justify centre
+
+set -g status-left ''
+set -g status-right ''
+
+set -g window-status-format ""
+[config:local]
+set -g window-status-current-format "%H:%M (%m-%d)"
+[config:*,-local]
+set -g window-status-current-format ""
+
+[config:*]
+bind-key -T copy-mode C-w send-keys -X copy-pipe-and-cancel "xclip -selection clipboard"
+bind-key -T copy-mode M-w send-keys -X copy-pipe-and-cancel "xclip -selection clipboard"

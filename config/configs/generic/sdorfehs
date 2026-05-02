@@ -1,0 +1,120 @@
+[config:*]
+# Change prefix key
+escape C-semicolon
+
+# Rudeness
+
+# Sum of:
+#  1: Transient windows may raise.
+#  2: Normal windows may raise.
+#  4: New transient windows end up in the foreground.
+#  8: New normal windows end up in the foreground.
+# 16: Window raise from different vscreen will be permitted.
+
+# We want: 1, 4, 8 = 13
+
+set rudeness 13
+
+# Focus
+set focusonclick 1
+
+# Gaps
+set gap 0
+
+# Borders
+set border 5
+set barborder 5
+set ignoreresizehints 1
+
+# Bar
+set barsticky 1
+set bargravity s
+
+# Padding
+set padding 0 0 0 0
+set barpadding 0 0
+set barinpadding 0
+
+# Fonts
+set font 'Mono-16'
+
+# Colors
+set fgcolor #FFFFFF
+set bgcolor #000000
+
+set bwcolor #000000
+set fwcolor #FFFFFF
+
+set barbordercolor #FFFFFF
+
+# Windows
+set winfmt '%t'
+set wingravity center
+
+# Aliases
+alias center exec sdorfehs -c 'hsplit 2/3' -c 'hsplit 1/2' -c 'exchangeright'
+alias office exec sdorfehs -c 'set border 2' -c 'set barborder 2' -c 'set font Mono-14'
+
+# Key binds
+## Unbind some old stuff
+unbind K
+unbind C-K
+unbind C-r
+unbind w
+unbind C-w
+unbind Tab
+unbind M-Tab
+unbind Q
+unbind s
+unbind C-s
+unbind S
+unbind C-S
+unbind R
+
+# Mmmm ... xterm? Or not to xterm?
+bind c exec st
+
+## From i3
+bind Return exec st
+bind C-q kill
+bind R source .config/sdorfehs/config
+bind C-E quit
+
+## From Emacs <3
+bind b select
+bind C-b windows
+bind h help root
+
+### C-x frame behavior
+newkmap ctrl-x
+
+bind C-x readkey ctrl-x
+
+definekey ctrl-x o focus
+definekey ctrl-x 1 only
+definekey ctrl-x 2 split
+definekey ctrl-x 3 hsplit
+definekey ctrl-x h help ctrl-x
+
+definekey ctrl-x h focusleft
+definekey ctrl-x j focusdown
+definekey ctrl-x k focusup
+definekey ctrl-x l focusright
+
+### C-v vscreen behavior
+newkmap ctrl-v
+
+bind C-v readkey ctrl-v
+
+definekey ctrl-v h help ctrl-v
+
+definekey ctrl-v C-b vscreens
+
+definekey ctrl-v n vnext
+definekey ctrl-v p vprev
+definekey ctrl-v o vother
+definekey ctrl-v b vselect
+definekey ctrl-v a vrename
+definekey ctrl-v m vmove
+
+exec while true; do date +'%a %b %d %H:%M' > ~/.config/sdorfehs/bar; sleep 30; done

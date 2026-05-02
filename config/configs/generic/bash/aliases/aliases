@@ -1,0 +1,10 @@
+[config:*]
+alias emacs='emacs -nw'
+alias mg='emacs -nw'
+alias xdvi='okular'
+    
+[config:local]
+# This is so silly I'm ashamed it works (this is so that `sudo emacs ...`
+# properly expands to `sudo emacs -nw ...` ... yes, this is important to me,
+# just left me have this).
+alias sudo='sudo '

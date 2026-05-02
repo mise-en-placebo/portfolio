@@ -1,0 +1,39 @@
+{
+    "locals": ["DJN-LAP", "djn-unx"],
+    
+    "hosts": [
+        "snargle",
+        "devin",
+        "shrek",
+        "local"
+    ],
+
+    "collections":{
+        "bash":[
+            "bash-aliases"
+        ]
+    },
+    
+    "configs":{
+        "bash-aliases":{
+            "source":"bash/aliases/aliases",
+            "target":"$HOME/.bash.d/aliases/aliases",
+            "exclude": []
+        },
+        "sdorfehs":{
+            "source":"sdorfehs",
+            "target": "$HOME/.config/sdorfehs/config",
+            "exclude":["snargle", "devin", "shrek"]            
+        },        
+        "xpdfrc":{
+            "target":"$HOME/.xpdfrc",
+            "source":"xpdfrc",
+            "exclude": []
+        },
+        "tmux":{
+            "target":"$HOME/.tmux.conf",
+            "source":"tmux",
+            "exclude": []
+        }
+    }
+}

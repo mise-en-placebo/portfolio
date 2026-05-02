@@ -1,0 +1,144 @@
+#! /usr/bin/perl
+
+use strict;
+use warnings;
+
+use Env;
+
+# The first line is only for the portfolio.
+
+use lib qw(../lib/perl
+           /src/lib/perl
+           $HOME/src/lib/perl);
+
+use DJN::Config;
+use DJN::Config::Collection;
+
+use DJN::Sys;
+
+use Env;
+
+use File::Basename;
+
+use JSON;
+
+###
+### Subroutines
+###
+
+sub load_json_configs {
+    my $json;
+
+    my $sys = DJN::Sys->new();
+    
+    my $config_list = $sys->config()."/config-list.json";
+
+    open(my $SFH, '<', $config_list)
+        or die ("Can't open config list file.");
+
+    $json .= $_ while <$SFH>;
+
+    close($SFH)
+        or die ("Can't close config list file.");
+
+    return decode_json($json);
+}
+
+sub json_to_config {
+    my $json = shift;
+    my $name = shift;
+
+    my $source  = $json->{configs}->{$name}->{source};
+    my $target  = $json->{configs}->{$name}->{target};
+    my $exclude = $json->{configs}->{$name}->{exclude};
+
+    # This is necessary as there are variables stored in the target strings
+    # in config-list.json that need to be interpolated by Perl. This is a little
+    # dangerous, so don't put anything silly in the json file.
+    
+    $target = eval qq{ "$target" };
+    
+    my $config = DJN::Config->new({ name    => $name,
+                                    source  => $source,
+                                    target  => $target,
+                                    exclude => $exclude, });
+
+    return $config;
+}
+
+sub gather_configs {
+    my $cfgs = shift;
+    my $json = shift;
+
+    my @requested_cfgs = @{ $cfgs };
+
+    my $actual_configs = DJN::Config::Collection->new({ name => '' });
+
+    my $collections = $json->{collections};
+    my $all_configs = $json->{configs};
+
+    @requested_cfgs = sort keys %{ $all_configs } unless @requested_cfgs;
+
+    # This might be a little too verbose, but I think it's more readable.
+    
+    while (my $config = shift @requested_cfgs) {
+
+        if (exists $collections->{$config}) {
+            
+            my @collection_cfgs = @{ $json->{collections}->{$config} };
+            
+            unshift @requested_cfgs, @collection_cfgs;
+
+            next;
+            
+        } elsif (exists $all_configs->{$config}) {
+            
+            $config = json_to_config($json,$config);
+
+            next if $config->excluded();
+            
+            $actual_configs->push($config);
+            
+        } else {
+            
+            print "Unrecognized config '$config'; skipping.\n";
+            
+        }
+    }
+
+    return $actual_configs;
+}
+
+###
+### Main
+###
+
+my $subcommand;
+
+if (@ARGV == 0) {
+    $subcommand = 'check';
+} else {
+    $subcommand = shift;
+}
+
+my @requested_cfgs = @ARGV;
+
+my $json = load_json_configs();
+
+my $configs = gather_configs(\@requested_cfgs, $json);
+
+# Perl doesn't have a non-deprecated switch type statement.
+
+for ($subcommand) {
+    if ($subcommand eq 'list')     { $configs->list();     last; }
+    if ($subcommand eq 'list-all') { $configs->list(1);    last; }    
+    if ($subcommand eq 'check')    { $configs->check();    last; }
+    if ($subcommand eq 'diff')     { $configs->check(1);   last; }
+    if ($subcommand eq 'install')  { $configs->install();  last; }
+    if ($subcommand eq 'generate') { $configs->generate(); last; }
+    
+    print "Unknown subcommand '$subcommand'; quitting...\n";
+    exit 1;
+}
+
+exit 0;

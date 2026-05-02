@@ -1,0 +1,856 @@
+#! /usr/bin/perl
+
+use strict;
+use warnings;
+
+use version; our $VERSION = qv '0.5.2';
+
+use lib qw(...);
+
+# Note: Many of the `use` statements pull in private AMS
+# Perl modules. These should not be distributed, and as such
+# I have not supplied these modules with the
+# portfolio. Their functions should be apparent from their
+# names (mostly). Nearly any module starting with 'PTG',
+# 'PRD', 'TEG', or 'TeX' will be private modules.
+#
+# Also note that, for the purposes of the portfolio, I (Dan)
+# did not write **ANY** of these private modules. However, I
+# wrote this entire script. Think of it as a dev using an
+# API they did not write.
+
+use PTG::Utils;
+
+use TeX::Parser::Transform;
+
+use TeX::Token qw(:catcodes);
+
+use TeX::Token::Constants qw(:all);
+
+use TeX::TokenList;
+
+######################################################################
+##                                                                  ##
+##                              LOGGING                             ##
+##                                                                  ##
+######################################################################
+
+use PRD::StdLogger;
+
+my $LOG = PRD::StdLogger->get_logger();
+
+END { undef $LOG };
+
+######################################################################
+##                                                                  ##
+##                              IMPORTS                             ##
+##                                                                  ##
+######################################################################
+
+use Cwd qw(abs_path);
+
+use File::Basename;
+use File::Copy;
+
+use Getopt::Long qw(:config no_ignore_case);
+
+use PRD::Environment;
+
+use PRD::SnapLaTeX qw(snaplatex);
+
+use PRD::Utils;
+
+use PTG::SVN::Client;
+
+use PRD::TeXUtils::Misc;
+
+use PTG::Utils;
+
+use TeX::Parser::Transform;
+
+use TeX::Token qw(:catcodes);
+
+use TeX::Token::Constants qw(:all);
+
+######################################################################
+##                                                                  ##
+##                             OPTIONS                              ##
+##                                                                  ##
+######################################################################
+
+our %OPT = (validate     => 1,
+            preamble     => 1,
+            bibliography => 1,
+            inprod       => 0,
+            conditionals => 1,
+            macros       => 1,
+            protected    => 1,
+            do_svn       => 1,
+            do_clean     => 1,
+            do_replace   => 1,
+    );
+
+######################################################################
+##                                                                  ##
+##                            CONSTANTS                             ##
+##                                                                  ##
+######################################################################
+
+my $AGENT = program_name;
+
+my $SVN = PTG::SVN::Client->new();
+
+END { undef $SVN };
+
+my @conditionals = ( 'ifx',
+                     'if',
+                     'ifcase',
+                     'ifdim',
+                     'ifeof',
+                     'ifhbox',
+                     'ifinner',
+                     'ifmmode',
+                     'ifnum',
+                     'ifodd',
+                     'iftrue',
+                     'ifvbox',
+                     'ifvmode',
+                     'ifvoid',
+    );
+
+my %protected_envs = ( verbatim   => 1,
+                       lstlisting => 1 );
+
+my @macros = ();
+
+######################################################################
+##                                                                  ##
+##                              USAGE                               ##
+##                                                                  ##
+######################################################################
+
+sub usage() {
+    my $program_name = program_name;
+
+    my $usage = << "EOF";
+Usage: $program_name [options] tex_file_1 tex_file_2 ...
+
+Remove all comments from the supplied .tex files. If successful, replaces the
+original .tex file by the rewritten file. Fails if either the original or the
+rewritten file can't be LaTeXed.
+
+Options:
+    -novalidate:     Skip LaTeX validation.
+
+    -nopreamble:     Don't remove explicit comment characters until 
+                     \\begin{document}.
+
+    -nobibliography: Don't remove explicit comment characters in the 
+                     bibligraphy.
+
+    -inprod:         Don't remove explicit comment characters in the
+                     preamble or the bibliography; equivalent to
+                     -nopreamble -nobibliography.
+
+    -noconditionals: Don't remove dubious conditionals.
+
+    -nomacros:       Don't remove macros used as comments.
+
+    -noclean:        Don't remove intermediate files (.aux, .log, .dvi, etc.)
+                     
+    -noreplace:      Even if the conversion is successful, don't replace the
+                     original file.
+                     
+    -nosvn:          Don't perform SVN operations.
+                     
+    -help:           Print this.
+                     
+    -quit:           Less output.
+                     
+    -verbose:        More ouput.
+                     
+    -debug:          Much more output.
+EOF
+    
+    $LOG->notify($usage);
+
+    exit 1;
+}
+
+######################################################################
+##                                                                  ##
+##                             HANDLERS                             ##
+##                                                                  ##
+######################################################################
+
+### There's SOMETHING going on here that I can't quite figure
+### out how to fix. There's something about the
+### `make_newcommand_handler` subroutine that doesn't respect my
+### setting of the comment handler. So instead, for now,
+### I'll just hack together my own for the few places where
+### this gets called (only in the scanning of macro
+### replacement text). In theory, this really shouldn't be
+### TOO bad since (A) TeX::Parser is pretty good, and (B)
+### the curly brackets MUST be balanced or it's not valid
+### TeX. 
+
+sub get_replacement_text {
+    my $xform = shift;
+
+    my $depth = 1;
+
+    my $replacement = TeX::TokenList->new();
+
+    while ($depth > 0) {
+        my $token = $xform->get_next_token();
+
+        if ($OPT{preamble}) {
+            while ($token == CATCODE_COMMENT) {
+                $token = $xform->get_next_token();
+            }
+        }
+        
+        ++$depth if $token == BEGIN_GROUP;
+        --$depth if $token == END_GROUP;
+
+        $replacement->push($token) unless $token == END_GROUP && $depth == 0;
+    }
+
+    return $replacement;
+}
+
+sub comment_handler {
+    my $xform = shift;
+
+    return sub {
+	my $parser = shift;
+
+	$xform->skip_comment();
+    }
+}
+
+sub make_inline_begin_handler {
+    my $xform       = shift;
+    my $cond_depth  = shift;
+    my $in_comment  = shift;
+
+    return sub {
+        my $parser = shift;
+	my $token  = shift;
+
+        return if $xform->gobbling();
+
+        $parser->skip_optional_spaces();
+        
+	my $next = $parser->peek_next_token();
+
+        if ($next == CATCODE_BEGIN_GROUP) {
+            my $env_name = trim($parser->read_undelimited_parameter());
+
+            if ($env_name eq 'comment') {
+		$xform->set_gobbling(1);
+
+                $$in_comment = 1;
+
+                return;
+            } elsif ($env_name eq 'document') {
+
+                unless ($OPT{preamble}) {
+                    $xform->set_comment_handler(\&comment_handler);
+                    $OPT{preamble} = 1;
+                }
+                
+            } elsif (exists $protected_envs{$env_name}) {
+                if ($OPT{protected}) {
+                    $xform->save_handlers();
+                    $xform->clear_handlers();
+                    $xform->set_handler(end => make_inline_end_handler($xform, $cond_depth, $in_comment));                    
+                }
+            } elsif ($env_name eq 'thebibliography' || 
+                     $env_name eq 'bibsection' || 
+                     $env_name eq 'bibchapter' || 
+                     $env_name eq 'bibdiv') {
+
+                unless ($OPT{bibliography}) {
+                    $xform->delete_comment_handler();
+                }
+                
+            }
+
+            $xform->write($token);
+            $xform->write(BEGIN_GROUP);
+            $xform->write_string($env_name);
+            $xform->write(END_GROUP);
+
+        } else {
+            $xform->write($token);
+        }
+
+        return;
+    };
+}
+
+sub make_inline_end_handler {
+    my $xform      = shift;
+    my $cond_depth = shift;
+    my $in_comment = shift;
+    
+    return sub {
+        my $parser = shift;
+        my $token  = shift;
+
+        $parser->skip_optional_spaces();
+        
+        my $next = $parser->peek_next_token();
+
+	if ($next == CATCODE_BEGIN_GROUP) {
+            my $env_name = trim($parser->read_undelimited_parameter());
+
+            ### Note that if the file compiles, you can't have nested comment
+            ### environments, so you should not need to check for nesting of
+            ### comment environments.
+	    if ($env_name eq 'comment') {
+                ### Unfortunately, you *can* have comment environments inside of
+                ### conditionals. Thus we can't just turn off gobbling if
+                ### \end{comment} pops up; we need to see if we're inside a bad
+                ### conditional first.
+		$xform->set_gobbling(0) if $$cond_depth <= 0;
+
+                $xform->skip_newline();
+
+                $$in_comment = 0;
+
+                return;
+            } elsif (exists $protected_envs{$env_name}) {
+                
+                ### Note that here, we can't necessarily do this as we
+                ### could, theoretically, have nested verbatim-esque
+                ### environments. But this will be good enough for 99%
+                ### of cases (probably).
+
+                if ($OPT{protected}) {
+                    $xform->restore_handlers();
+                }
+                
+            } elsif ($env_name eq 'thebibliography' ||
+                     $env_name eq 'bibsection' ||
+                     $env_name eq 'bibchapter' ||
+                     $env_name eq 'bibdiv') {
+
+                unless ($OPT{bibliography}) {
+                    $xform->set_comment_handler(\&comment_handler)
+                }
+                
+            }
+
+            $xform->write($token);
+            $xform->write(BEGIN_GROUP);
+            $xform->write_string($env_name);
+            $xform->write(END_GROUP);
+
+        } else {
+	    $xform->write($token);
+        }
+
+        return;
+    };
+}
+
+sub make_generic_if_handler {
+    my $xform      = shift;
+    my $cond_depth = shift;
+    
+    return sub{
+        ++$$cond_depth;
+
+        return;
+    };
+}
+
+### I don't think I've ever once seen \iffalse used as anything other than an
+### arcane commenting mechanism.
+
+sub make_iffalse_handler {
+    my $xform      = shift;
+    my $cond_depth = shift;
+    
+    return sub {
+        my $parser = shift;
+        my $token  = shift;
+
+        ++$$cond_depth;
+        
+        $xform->set_gobbling(1);
+        $xform->skip_newline();
+
+        return;
+    };
+}
+
+### It's rare, but I have seen authors use \ifx as a commenting
+### mechanism. In general, a pretty safe check is if \ifx is followed by
+### a command; if it is, it's probably a legitimate use.
+
+sub make_ifx_handler {
+    my $xform      = shift;
+    my $cond_depth = shift;
+
+    return sub {
+        my $parser = shift;
+        my $token  = shift;
+
+        $parser->skip_optional_spaces();
+
+        my $next = $parser->peek_next_token();
+        
+        unless ($next == CATCODE_CSNAME) {
+            ++$$cond_depth;
+            $xform->set_gobbling(1);
+            $xform->skip_newline();
+        } else {
+            $xform->write($token);
+        }
+
+        return;
+    };
+}
+
+sub make_fi_handler {
+    my $xform      = shift;
+    my $cond_depth = shift;
+    my $in_comment = shift;
+    return sub {
+        my $parser = shift;
+        my $token  = shift;
+
+        --$$cond_depth;
+
+        
+        if ($$cond_depth == 0) {
+            ### Same idea here: you can have conditionals inside of comment
+            ### environments, so we can't necessarily just turn off gobbling
+            ### when the last \fi command pops up.
+            $xform->set_gobbling(0) unless $$in_comment;
+            $xform->skip_newline();
+        } else {
+            $xform->write($token);
+        }
+
+        return;
+    };
+}
+
+sub make_newcommand_handler {
+    my $xform = shift;
+
+    return sub {
+        my $parser = shift;
+        my $csname = shift;
+
+        my $saved = TeX::TokenList->new({ tokens => [ $csname ] });
+
+        if ($xform->is_starred()) {
+            $saved->push(STAR);
+        }
+
+        my $control_sequence = $xform->read_undelimited_parameter();
+
+        if ($control_sequence->length() != 1) {
+            my $line_no = $xform->get_line_no();
+
+            PRD::RunError->throw("Malformed $csname on line $line_no\n");
+        }
+
+        my $defined = $control_sequence->index(0);
+
+        $saved->push(BEGIN_GROUP, $defined, END_GROUP);
+
+        my $num_params = $xform->scan_optional_argument();
+
+        my $next = $xform->peek_next_token();
+
+        if ($next == BEGIN_OPT) {
+            $saved->push(BEGIN_OPT, $num_params, END_OPT);
+
+            $xform->write_token_list($saved);
+        } else {
+            $xform->skip_optional_spaces();
+
+            my $next = $xform->get_next_token();
+
+            if ($next != BEGIN_GROUP) {
+                my $line_no = $xform->get_line_no();
+
+                PRD::RunError->throw("Expected { but found $next in definition on line $line_no.\n");
+            }
+
+            my $replacement = get_replacement_text($xform);
+
+            if ($replacement->to_string() =~ /[^[:space:]]/ || ! $num_params) {
+                $saved->push(BEGIN_OPT, $num_params, END_OPT) if $num_params;
+                $xform->write_token_list($saved);
+                $xform->write(BEGIN_GROUP);
+                $xform->write_token_list($replacement);
+                $xform->write(END_GROUP);
+            } else {
+                $xform->set_handler($defined->get_csname() => make_comment_macro_handler($xform, $num_params, $replacement)) if $OPT{macros};
+            }
+        }
+     
+        return;
+    };
+}
+
+sub make_def_handler {
+    my $xform = shift;
+
+    return sub {
+        my $parser = shift;
+        my $csname = shift;
+
+        my $saved = TeX::TokenList->new({ tokens => [ $csname ] });
+
+        my $line_no = $parser->get_line_no();
+
+        $parser->skip_optional_spaces();
+
+        my $control_sequence = $parser->read_undelimited_parameter();
+
+        if ($control_sequence->length() != 1) {
+            $LOG->error("Malformed definition on line $line_no.\n");
+
+            return;
+        }
+
+        my $defined = $control_sequence->index(0);
+
+        $saved->push($defined);
+
+        my $param_text = $parser->read_parameter_text();
+        
+        $saved->push($param_text);
+
+        $saved->push(BEGIN_GROUP);
+        
+        my $num_params = count_params($param_text);
+
+        my $replacement = get_replacement_text($xform);
+
+        $saved->push($replacement, END_GROUP);
+        
+        if (defined($num_params) && $num_params > 0) {
+
+            if ($replacement->to_string() =~ /[^[:space:]]/) {
+
+                $xform->write_token_list($saved);
+
+            } else {
+
+                $xform->set_handler($defined->get_csname() => make_comment_macro_handler($xform, $num_params, $replacement)) if $OPT{macros};
+
+            }
+
+        } else {
+            $xform->write_token_list($saved);
+        }
+    };
+}
+
+sub make_comment_macro_handler {
+    my $xform       = shift;
+    my $num_params  = shift;
+    my $replacement = shift;
+
+    return sub {
+        my $parser = shift;
+        my $token  = shift;
+
+        for (1..$num_params) {
+            $parser->skip_optional_spaces();
+            $parser->read_undelimited_parameter();
+        }
+
+        ### The $replacement token list is only passed to this handler if it
+        ### contains spaces. There's always a chance an author does something
+        ### like so:
+        ###
+        ###     \def\comment#1{ }
+        ###     ...
+        ###     ... as in\comment{Section}Chapter...
+        ###
+        ### Technically we only need to add in ONE space in such a case, and
+        ### there's probably a more elegant way, but this works for now.
+
+        $xform->write_token_list($replacement);
+
+        $xform->skip_newline();
+        
+        return;
+    };
+}
+
+######################################################################
+##                                                                  ##
+##                            SUBROUTINES                           ##
+##                                                                  ##
+######################################################################
+
+### This is to fix the comment bug that this script shares in common with
+### flatten. The problem only happens when one line ends with an comment,
+### there's a blank line, and then the next line starts like so:
+###
+###     ... end of a line.%
+###
+###     Start of a new line ...
+###
+### In these cases, TeX will (correctly) insert a \par between the two
+### lines, but the parser will gobble the line (and hence the par), which
+### results in:
+###
+###     end of a line.
+###     Start of a new line ...
+###
+### The obvious slapdash "fix" is to just quickly parse the file for all
+### instances of a line that ends in a comment followed by an empty line
+### and add in an extra empty line, which is what this does.
+
+sub preprocess_file {
+    my $in_file = shift;
+
+    (my $tmp_file = $in_file) =~ s{(\.\S*)?\z}{_nocomm-tmp$1};
+
+    unlink $tmp_file if -f $tmp_file;
+
+    open(my $IFH, '<', $in_file);
+
+    chomp(my @lines = <$IFH>);
+
+    close($IFH);
+
+    open(my $OFH, '>', $tmp_file);
+
+    while (@lines) {
+        my $line = shift(@lines);
+
+        ### The '@lines' check is to safeguard against the case that the
+        ### .tex file ends in a comment.
+        
+        if ($line =~ /%/ && @lines) {
+            my $next_line = shift(@lines);
+
+            unless ($next_line =~ /[^[:space:]]/) {
+                $next_line = "\n".$next_line;
+            }
+
+            unshift(@lines, $next_line);
+        }
+
+        print $OFH $line, "\n"
+    }
+
+    close($OFH);
+
+    return $tmp_file;
+}
+
+sub remove_comments {
+    my $in_file = shift;
+
+    my $cond_depth  = 0;
+    my $in_comment  = 0;
+
+    my $tmp_file = preprocess_file($in_file);
+
+    (my $out_file = $in_file) =~ s{(\.\S*)?\z}{_nocomm$1};
+    
+    my $xform = eval {
+        TeX::Parser::Transform->new({ source_file => $tmp_file,
+                                      output_file => $out_file,
+                                    });
+    };
+
+    if ($@) {
+        PTG::RunError->throw("Could not create parser for $in_file: $@\n");
+    }
+
+    if ($OPT{inprod}) {
+        $OPT{preamble}     = 0;
+        $OPT{bibliography} = 0;
+    }
+
+    $xform->delete_handler('protect');
+    
+    $xform->set_handler(begin => make_inline_begin_handler($xform, \$cond_depth, \$in_comment));
+    $xform->set_handler(end   => make_inline_end_handler($xform, \$cond_depth, \$in_comment));
+
+    ### This is needed for the \fi handling. There are only a few conditionals
+    ### which are FREQUENTLY abused as commenting mechanisms, but we need to be
+    ### able to handle nested conditionals to know when "comment" conditionals
+    ### end.
+
+    if ($OPT{conditionals}) {
+        for my $if (@conditionals) {
+            $xform->set_handler($if => make_generic_if_handler($xform, \$cond_depth));
+        }
+
+        $xform->set_handler(ifx     => make_ifx_handler($xform, \$cond_depth));
+        $xform->set_handler(iffalse => make_iffalse_handler($xform, \$cond_depth));
+
+        $xform->set_handler(fi      => make_fi_handler($xform, \$cond_depth, \$in_comment));
+    }
+
+    $xform->set_comment_handler(\&comment_handler) if $OPT{preamble};
+
+    # if ($OPT{macros}) {
+        $xform->set_handler(newcommand   => make_newcommand_handler($xform));
+        $xform->set_handler(renewcommand => make_newcommand_handler($xform));
+        $xform->set_handler(def          => make_def_handler($xform));
+    # }
+    
+    $xform->transform();
+
+    unlink $tmp_file if -f $tmp_file;
+    
+    return $out_file;
+}
+
+sub process_file {
+    my $path = shift;
+
+    my $dirname = abs_path(dirname($path));
+
+    my $is_versioned = $OPT{do_svn} && $SVN->is_versioned($dirname);
+
+    if ($is_versioned) {
+        delete_intermediate_files($dirname, { svn       => $SVN,
+                                              recursive => 0,
+                                              logger    => $LOG,
+
+                                  });
+
+        if (! file_is_up_to_date($dirname)) {
+            PRD::RunError->throw("File is not up to date.");
+        }
+
+        $SVN->update($dirname);
+    }
+
+    chdir($dirname) or do {
+        PRD::RunError->throw("Can't connect to $dirname: $!");
+    };
+
+    my $tex_file = basename($path);
+
+    my $orig_dvi;
+
+    if ($OPT{validate}) {
+        $LOG->notify("Checking that '$tex_file' is valid LaTeX...\n");
+
+        $orig_dvi = snaplatex($tex_file, proof => 1, bibtex => 1);
+
+        $LOG->notify("valid\n");
+    }
+
+    $LOG->notify("\nRewriting '$tex_file'\n");
+
+    my $new_file = eval { remove_comments($tex_file) };
+
+    if ($@) {
+        PTG::RunError->throw("Unable to remove comments from '$tex_file': $@");
+    }
+
+    if ($OPT{validate}) {
+        $LOG->notify("\nChecking that '$new_file' is valid LaTeX...\n");
+
+        my $new_dvi = snaplatex($new_file, proof => 1);
+
+        $LOG->notify("valid\n");
+
+        $LOG->notify("\nChecking DVI file\n\n");
+
+        eval { dvidiff($orig_dvi, $new_dvi) };
+
+        if ($@) {
+            $LOG->notify("\nConverted file left in '$new_file'\n");
+
+            PTG::RunError->throw("$new_dvi is not identical to $orig_dvi");
+        } else {
+            $LOG->notify("\nDVI files are identical.\n");
+        }
+    }
+
+    if ($OPT{do_replace} && $is_versioned) {
+        $LOG->notify("\nReplacing '$tex_file' by '$new_file'\n");
+
+        rename($new_file, $tex_file) or do {
+            PTG::RunError->throw("Can't replace $tex_file by $new_file: $!");
+        };
+
+        my $message = qq{Removed comments from $tex_file [$AGENT]};
+
+        eval { $SVN->commit($dirname, { recursive => 1,
+                                        message   => $message })};
+
+        if ($@) {
+            PTG::RunError->throw("Could not write changes to the repository: $@");
+        }
+    }
+
+    if ($OPT{do_clean}) {
+        $LOG->notify("\nDeleting intermediate files.\n");
+
+        delete_intermediate_files($dirname, { svn       => $SVN,
+                                              recursive =>0,
+                                              logger    => $LOG });
+    }
+
+    return;
+}
+
+######################################################################
+##                                                                  ##
+##                               MAIN                               ##
+##                                                                  ##
+######################################################################
+
+program_banner();
+
+GetOptions("validate!"     => \$OPT{validate},
+           "preamble!"     => \$OPT{preamble},
+           "bibliography!" => \$OPT{bibliography},
+           "inprod"        => \$OPT{inprod},
+           "conditionals!" => \$OPT{conditionals},
+           "macros!"       => \$OPT{macros},
+           "protection!"   => \$OPT{protected},
+           "svn!"          => \$OPT{do_svn},
+           "clean!"        => \$OPT{do_clean},
+           "replace!"      => \$OPT{do_replace},
+           "help"          => \&usage,
+           "verbose!"      => sub { $LOG->set_verbose($_[1]) },
+           "quiet!"        => sub { $LOG->set_quiet($_[1]) },
+           "debug!"        => sub { $LOG->set_debug($_[1]) },
+) or usage;
+
+usage unless @ARGV;
+
+for my $tex_file (@ARGV) {
+    my $in_file = resolve_tex_filename($tex_file);
+
+    if (! defined $in_file) {
+        $LOG->error("Can't find $tex_file; skipping...\n\n");
+
+        next;
+    }
+    
+    eval { process_file($in_file) };
+    
+    if ($@) {
+        $LOG->notify("\nUnable to process '$tex_file': $@\n");
+
+        $LOG->notify("\nSkipping '$tex_file'\n");
+
+        next;
+    }
+}
+
+__END__

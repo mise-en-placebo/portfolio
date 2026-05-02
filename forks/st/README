@@ -1,0 +1,52 @@
+# My fork of st
+
+`st` is a simple, UTF-8 enabled terminal emulator.[^1] As I
+spend the vast majority of my working day inside of a
+terminal, I wanted one that fits my needs. To tell the
+truth, nearly any terminal would fit my needs, but the
+philosophy and idea of a terminal I could customize the
+source of appealed to me.
+
+My fork of `st` includes the
+[keyboard_select](https://st.suckless.org/patches/keyboard_select/)
+patch (and potentionally another patch I've forgotten). I've
+also modified the keyboard_select patch to have controls
+more similar to Emacs.
+
+---
+
+st - simple terminal
+--------------------
+st is a simple terminal emulator for X which sucks less.
+
+
+Requirements
+------------
+In order to build st you need the Xlib header files.
+
+
+Installation
+------------
+Edit config.mk to match your local setup (st is installed into
+the /usr/local namespace by default).
+
+Afterwards enter the following command to build and install st (if
+necessary as root):
+
+    make clean install
+
+
+Running st
+----------
+If you did not install st with make clean install, you must compile
+the st terminfo entry with the following command:
+
+    tic -sx st.info
+
+See the man page for additional details.
+
+Credits
+-------
+Based on Aurélien APTEL <aurelien dot aptel at gmail dot com> bt source code.
+
+[^1]: Created by the [suckless team](https://st.suckless.org/).

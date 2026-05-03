@@ -5,23 +5,25 @@ use warnings;
 
 use version; our $VERSION = qv '0.5.2';
 
+# Obfuscated for security purposes
+
 use lib qw(...);
 
-# Note: Many of the `use` statements pull in private AMS
+# Note: Many of the `use` statements pull in private 
 # Perl modules. These should not be distributed, and as such
 # I have not supplied these modules with the
 # portfolio. Their functions should be apparent from their
-# names (mostly). Nearly any module starting with 'PTG',
-# 'PRD', 'TEG', or 'TeX' will be private modules.
+# names (mostly). Nearly any module starting with 'XYZ' or
+# 'TeX' is a private module.
 #
 # Also note that, for the purposes of the portfolio, I (Dan)
 # did not write **ANY** of these private modules. However, I
 # wrote this entire script. Think of it as a dev using an
 # API they did not write.
 
-use PTG::Utils;
+use XYZ::Utils;
 
-use TeX::Parser::Transform;
+use XYZ::Parser::Transform;
 
 use TeX::Token qw(:catcodes);
 
@@ -35,9 +37,9 @@ use TeX::TokenList;
 ##                                                                  ##
 ######################################################################
 
-use PRD::StdLogger;
+use XYZ::StdLogger;
 
-my $LOG = PRD::StdLogger->get_logger();
+my $LOG = XYZ::StdLogger->get_logger();
 
 END { undef $LOG };
 
@@ -54,17 +56,17 @@ use File::Copy;
 
 use Getopt::Long qw(:config no_ignore_case);
 
-use PRD::Environment;
+use XYZ::Environment;
 
-use PRD::SnapLaTeX qw(snaplatex);
+use XYZ::SnapLaTeX qw(snaplatex);
 
-use PRD::Utils;
+use XYZ::Utils;
 
-use PTG::SVN::Client;
+use XYZ::SVN::Client;
 
-use PRD::TeXUtils::Misc;
+use XYZ::TeXUtils::Misc;
 
-use PTG::Utils;
+use XYZ::Utils;
 
 use TeX::Parser::Transform;
 
@@ -98,7 +100,7 @@ our %OPT = (validate     => 1,
 
 my $AGENT = program_name;
 
-my $SVN = PTG::SVN::Client->new();
+my $SVN = XYZ::SVN::Client->new();
 
 END { undef $SVN };
 
@@ -309,11 +311,14 @@ sub make_inline_end_handler {
             ### Note that if the file compiles, you can't have nested comment
             ### environments, so you should not need to check for nesting of
             ### comment environments.
+            
 	    if ($env_name eq 'comment') {
+
                 ### Unfortunately, you *can* have comment environments inside of
                 ### conditionals. Thus we can't just turn off gobbling if
                 ### \end{comment} pops up; we need to see if we're inside a bad
                 ### conditional first.
+
 		$xform->set_gobbling(0) if $$cond_depth <= 0;
 
                 $xform->skip_newline();
@@ -427,9 +432,11 @@ sub make_fi_handler {
 
         
         if ($$cond_depth == 0) {
+
             ### Same idea here: you can have conditionals inside of comment
             ### environments, so we can't necessarily just turn off gobbling
             ### when the last \fi command pops up.
+
             $xform->set_gobbling(0) unless $$in_comment;
             $xform->skip_newline();
         } else {
@@ -458,7 +465,7 @@ sub make_newcommand_handler {
         if ($control_sequence->length() != 1) {
             my $line_no = $xform->get_line_no();
 
-            PRD::RunError->throw("Malformed $csname on line $line_no\n");
+            XYZ::RunError->throw("Malformed $csname on line $line_no\n");
         }
 
         my $defined = $control_sequence->index(0);
@@ -481,7 +488,7 @@ sub make_newcommand_handler {
             if ($next != BEGIN_GROUP) {
                 my $line_no = $xform->get_line_no();
 
-                PRD::RunError->throw("Expected { but found $next in definition on line $line_no.\n");
+                XYZ::RunError->throw("Expected { but found $next in definition on line $line_no.\n");
             }
 
             my $replacement = get_replacement_text($xform);
@@ -493,7 +500,8 @@ sub make_newcommand_handler {
                 $xform->write_token_list($replacement);
                 $xform->write(END_GROUP);
             } else {
-                $xform->set_handler($defined->get_csname() => make_comment_macro_handler($xform, $num_params, $replacement)) if $OPT{macros};
+                $xform->set_handler($defined->get_csname()
+                                    => make_comment_macro_handler($xform, $num_params, $replacement)) if $OPT{macros};
             }
         }
      
@@ -541,13 +549,10 @@ sub make_def_handler {
         if (defined($num_params) && $num_params > 0) {
 
             if ($replacement->to_string() =~ /[^[:space:]]/) {
-
                 $xform->write_token_list($saved);
-
             } else {
-
-                $xform->set_handler($defined->get_csname() => make_comment_macro_handler($xform, $num_params, $replacement)) if $OPT{macros};
-
+                $xform->set_handler($defined->get_csname()
+                                    => make_comment_macro_handler($xform, $num_params, $replacement)) if $OPT{macros};
             }
 
         } else {
@@ -670,7 +675,7 @@ sub remove_comments {
     };
 
     if ($@) {
-        PTG::RunError->throw("Could not create parser for $in_file: $@\n");
+        XYZ::RunError->throw("Could not create parser for $in_file: $@\n");
     }
 
     if ($OPT{inprod}) {
@@ -729,14 +734,14 @@ sub process_file {
                                   });
 
         if (! file_is_up_to_date($dirname)) {
-            PRD::RunError->throw("File is not up to date.");
+            XYZ::RunError->throw("File is not up to date.");
         }
 
         $SVN->update($dirname);
     }
 
     chdir($dirname) or do {
-        PRD::RunError->throw("Can't connect to $dirname: $!");
+        XYZ::RunError->throw("Can't connect to $dirname: $!");
     };
 
     my $tex_file = basename($path);
@@ -756,7 +761,7 @@ sub process_file {
     my $new_file = eval { remove_comments($tex_file) };
 
     if ($@) {
-        PTG::RunError->throw("Unable to remove comments from '$tex_file': $@");
+        XYZ::RunError->throw("Unable to remove comments from '$tex_file': $@");
     }
 
     if ($OPT{validate}) {
@@ -773,7 +778,7 @@ sub process_file {
         if ($@) {
             $LOG->notify("\nConverted file left in '$new_file'\n");
 
-            PTG::RunError->throw("$new_dvi is not identical to $orig_dvi");
+            XYZ::RunError->throw("$new_dvi is not identical to $orig_dvi");
         } else {
             $LOG->notify("\nDVI files are identical.\n");
         }
@@ -783,7 +788,7 @@ sub process_file {
         $LOG->notify("\nReplacing '$tex_file' by '$new_file'\n");
 
         rename($new_file, $tex_file) or do {
-            PTG::RunError->throw("Can't replace $tex_file by $new_file: $!");
+            XYZ::RunError->throw("Can't replace $tex_file by $new_file: $!");
         };
 
         my $message = qq{Removed comments from $tex_file [$AGENT]};
@@ -792,7 +797,7 @@ sub process_file {
                                         message   => $message })};
 
         if ($@) {
-            PTG::RunError->throw("Could not write changes to the repository: $@");
+            XYZ::RunError->throw("Could not write changes to the repository: $@");
         }
     }
 

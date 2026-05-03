@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width">
+    <title>Breaking and aligning</title>
+    <link rel="stylesheet" href="main.css">
+    <script id="MathJax-script" src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-svg.js"></script>
+    <script src="main.js"></script>
+  </head>
+  <body>
+    <div class="centered-column">
+      <h1>Breaking and aligning displays</h1>
+
+      <p>This is a brief practice for breaking and aligning
+        displays in \(\TeX\).
+
+      <p>The practice consists of a sequence of breaking
+        challenges. You'll be asked to break at a given
+        location, marked in <span style="color:
+        red;">red</span>.
+
+      <p>Your job is two-fold:
+        <ol>
+          <li>First, identify how the alignment should
+            look. This step is entirely mental; identify how
+            the alignment <em>should</em> look.</li>
+
+          <li>Then, make the changes to the existing TeX
+            code to try and get the TeX to break how you
+            identified it should.</li>
+        </ol>
+
+        <hr />
+
+        <h2>The rules</h2>
+
+      <p>While breaking displays can be challenging, the
+        rules are few and relatively straightforward.
+
+      <p>The authoritive reference for rules is
+        the <a href="https://www.ams.org/arc/styleguide/index.html">AMS
+        Journal Style Guide</a>. For our purposes, we will
+        be concerned with Section 13.17, <i>Breaking and
+        aligning equations in displays</i>.
+
+        <hr />
+        
+    <h2>Problem 5</h2>
+
+    \begin{align*}  
+      \oint_{C} (L \, \mathrm{d}x + M \, \mathrm{d}y) =
+      \iint_{D} \left(\frac{\partial M}{\partial x}
+      \mathbin{\color{red}+} \frac{\partial L}{\partial
+      y}\right) \, \mathrm{d} A
+    \end{align*}
+
+    <p>Do note that, in this problem, we would be better off
+      breaking at the "\(=\)". However, we are specifically
+      asking you to instead break at the "\(+\)".
+
+      <div class="showcase">
+        <div>
+          <label for="userInput"></label>
+          <textarea id="userInput"
+                    oninput="typesetAnswer('userInput',
+                             'userOutput')"></textarea>
+        </div>
+        <div>
+          <p id="userOutput"></p>
+        </div>
+      </div>
+
+    <p>
+      <button onclick="toggleDiv('answer1', 'flex')">
+        Show answer
+      </button>
+
+      <div class="showcase" style="display: none;" id="answer1">
+        <div>
+          <label for="solutionInput"></label>
+          <textarea id="solutionInput"
+                    disabled></textarea>
+        </div>
+        <div>
+          <p id="solutionOutput"></p>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      document.getElementById('userInput').defaultValue =
+    `\\begin{equation*}
+  \\oint_{C} (L \\, \\mathrm{d}x + M \\, \\mathrm{d}y) =
+  \\iint_{D} \\left( \\frac{\\partial M}{\\partial x} +
+  \\frac{\\partial L}{\\partial y} \\right) \\, \\mathrm{d}
+  A
+\\end{equation*}`;
+
+      document.getElementById('solutionInput').defaultValue =
+    `\\begin{align*}
+  \\oint_{C} (L \\, \\mathrm{d}x + M \\, \\mathrm{d}y) =
+  \\iint_{D} \\Bigg( & \\frac{\\partial M}{\\partial x} \\\\
+  & {} + \\frac{\\partial L}{\\partial y} \\Bigg) \\,
+  \\mathrm{d} A
+\\end{align*}`;
+
+      typesetAnswer('userInput', 'userOutput');
+      typesetAnswer('solutionInput', 'solutionOutput');
+    </script>
+  </body>
+</html>

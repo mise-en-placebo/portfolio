@@ -1,0 +1,58 @@
+:root {
+    color-scheme: light dark;
+    --background-primary: light-dark(#eeeeee, #101010);
+    --foreground-primary: light-dark(#000000, #ffffff);    
+}
+
+body, html {
+    height:           100%;
+    margin:           0;
+    padding-top:      25px;
+    padding-bottom:   25px;    
+    font-family:      serif, sans-serif, monospace;
+    font-size:        18px;
+    background-color: var(--background-primary);
+    color:            var(--foreground-primary);    
+}
+
+h1, h2, h3, h4 {
+    font-family: sans-serif, monospace;
+    text-align:  center;
+    width:       80%;
+    margin:      0 auto;
+}
+
+button {
+    font-family:      sans-serif;
+    font-weight:      bold;
+    background-color: var(--background-primary);
+    color:            var(--foreground-primary);
+}
+
+textarea {
+    font-size:        16px;
+    height:           15em;
+    width:            18em;
+    background-color: var(--background-primary);
+    resize:           none;
+}
+
+.centered-column {
+    text-align:   left;
+    max-width:    600px;
+    margin-left:  auto; 
+    margin-right: auto;
+}
+
+.showcase {
+    display:       flex;
+    border:        2px solid var(--foreground-primary);
+    border-radius: 5px;
+    align-items:   center;
+}
+
+.showcase > div {
+    flex:       1;
+    text-align: center;
+    overflow-x: auto;
+}

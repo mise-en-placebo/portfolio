@@ -7,12 +7,19 @@ in the portfolio.
 
 ## Forks
 
-Inside of the [forks](./forks/readme.md) directory are two
+Inside of the [`forks`](./forks) directory are two
 of the forks I've made. One is for
-[`sdorfehs`](./forks/sdorfehs/README.md), an X11 window
+[`sdorfehs`](./forks/sdorfehs), an X11 window
 manager I forked to add extra functionality to, and the
-other is [`st`](./forks/st/README.md) which I forked to
+other is [`st`](./forks/st) which I forked to
 customize to my liking.
+
+## lib
+
+Inside of the [`lib`](./lib) directory are various libraries
+I've developed for projects I've made. Note that, in this
+portfolio, there are (presently) only a few simple Perl
+modules (used almost entirely by the `config` script).
 
 ## `config`
 
@@ -54,3 +61,11 @@ is a Python script I developed to update tens of thousands
 of DOIs for a company. It uses Crossref's public metadata
 retrieval API, parses XML metadata files, and generates bulk
 update files to be submitted to Crossref.
+
+## alignment-training
+
+Inside of the [`alignment-training`](./alignment-training)
+directory is a little bit of HTML/CSS/JS I put together to
+serve a few web pages to train users on LaTeX tools,
+breaking, and aligning.
+

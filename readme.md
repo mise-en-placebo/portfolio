@@ -11,7 +11,8 @@ Inside of the [forks](./forks/readme.md) directory are two
 of the forks I've made. One is for
 [`sdorfehs`](./forks/sdorfehs/README.md), an X11 window
 manager I forked to add extra functionality to, and the
-other is `st` which I forked to customize to my liking.
+other is [`st`](./forks/st/README.md) which I forked to
+customize to my liking.
 
 ## Config
 

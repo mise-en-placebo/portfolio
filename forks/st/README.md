@@ -1,6 +1,6 @@
 # My fork of st
 
-`st` is a simple, UTF-8 enabled terminal emulator.[^1] As I
+`st` is a simple, UTF-8 enabled terminal emulator. As I
 spend the vast majority of my working day inside of a
 terminal, I wanted one that fits my needs. To tell the
 truth, nearly any terminal would fit my needs, but the
@@ -10,8 +10,14 @@ source of appealed to me.
 My fork of `st` includes the
 [keyboard_select](https://st.suckless.org/patches/keyboard_select/)
 patch (and potentionally another patch I've forgotten). I've
-also modified the keyboard_select patch to have controls
-more similar to Emacs.
+also modified the `keyboard_select` patch to have controls
+more similar to Emacs, as well as a few other key binds.
+
+The original project can be found at
+[https://st.suckless.org/](https://st.suckless.org/).
+
+My fork can be found at
+[https://github.com/mise-en-placebo/st](https://github.com/mise-en-placebo/st).
 
 ---
 

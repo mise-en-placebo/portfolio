@@ -11,10 +11,11 @@ libraries so this script **will not** run. Nonetheless, I
 find it to be a good example of my code, as well as a good
 example of creating code that leverages existing
 software. In lieu of functional code, in the `tests`
-directory I have included two files: `main.tex` and
-`main_nocomm.tex`. `main.tex` is an example of an input to
-`delete-comments` and `main_nocomm.tex` is an example of the
-output.
+directory I have included two files:
+[`main.tex`](./tests/main.tex) and
+[`main_nocomm.tex`](./tests/main_nocomm.tex). `main.tex` is
+an example of an input to `delete-comments` and
+`main_nocomm.tex` is an example of the output.
 
 ## Goal
 

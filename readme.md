@@ -45,3 +45,12 @@ this script depends lest I misrepresent this work as my own
 or make public code that was never intended to be
 public. As such, the script does not function, but I think
 it is still a useful showcase of my ability.
+
+## `get-doi-updates`
+
+Inside of the
+[`gen-doi-updates`](./gen-doi-updates/readme.md) directory
+is a Python script I developed to update tens of thousands
+of DOIs for a company. It uses Crossref's public metadata
+retrieval API, parses XML metadata files, and generates bulk
+update files to be submitted to Crossref.

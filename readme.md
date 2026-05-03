@@ -16,7 +16,7 @@ customize to my liking.
 
 ## `config`
 
-Inside of the [`config`](./config/readme.md) directory is my
+Inside of the [`config`](./config) directory is my
 custom configuration script. This keeps my configurations
 versioned, builds, and installs them. It also allows for a
 single generic configuration file to be used to generate
@@ -33,7 +33,7 @@ this script have been removed or altered.
 ## `delete-comments`
 
 Inside of the
-[`delete-comments`](./delete-comments/readme.md) directory
+[`delete-comments`](./delete-comments) directory
 is a Perl script I developed to remove various commenting
 mechanisms from TeX/LaTeX files. Note that the script
 depends on many custom libraries which I ***did not***
@@ -49,7 +49,7 @@ it is still a useful showcase of my ability.
 ## `get-doi-updates`
 
 Inside of the
-[`gen-doi-updates`](./gen-doi-updates/readme.md) directory
+[`gen-doi-updates`](./gen-doi-updates) directory
 is a Python script I developed to update tens of thousands
 of DOIs for a company. It uses Crossref's public metadata
 retrieval API, parses XML metadata files, and generates bulk

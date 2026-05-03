@@ -1,0 +1,67 @@
+\documentclass{article}
+
+\usepackage{comment}
+
+\def\foo#1{}
+
+\begin{document}
+
+Hello, world.
+
+% Here's a normal comment. This will be removed.
+
+\iffalse
+  Sometimes \TeX\ authors will abuse \texttt{iffalse} as a
+    commenting mechanism. This is accounted for and will be
+    removed. 
+\fi
+
+\begin{comment}
+  There are also explicit comment environments defined by,
+  e.g., the `comment` package. We remove these, too.
+\end{comment}
+
+\foo{
+  Sometimes \TeX\ authors will also create special macros for
+  the purposes of commenting things out. We again remove these.
+}
+
+\begin{verbatim}
+Other times, we don't want to remove comments, such as inside
+of verbatim environments. So we protect against these cases.
+% This comment won't be removed.
+\end{verbatim} 
+
+You might wonder why comment removal is so important to
+me. The reason is that, in \TeX\ communities, comments are
+rarely used as they are in programming or development
+communities. Namely, \TeX\ users typically use comments to
+\emph{remove} unwanted content rather than to comment on
+wanted content.
+
+For example, suppose you are told to correct the typo
+'hommorphism' in the following text. Can you easily do so
+with the comments?
+
+% Let $f:X \to Y$ be a hommorphism.
+\iffalse
+  Let $f:X \to Y$ be a hommorphism.
+\begin{comment}
+  Let $f:X \to Y$ be a hommorphism.
+\end{comment}
+  Let $f:X \to Y$ be a hommorphism.
+% \fi
+  Let $f:X \to Y$ be a hommorphism.\fi
+\foo{Let $f:X \to Y be %
+  %
+  %
+  a hommorphism.\iffalse
+%} Let $f:X \to Y$ be a hommorphism.
+Let $f:X \to Y$ be a hommorphism.}
+Let $f:X \to Y$ be a hommorphism.
+%Let $f:X \to Y$ be a hommorphism.
+% \fi
+
+
+
+\end{document}

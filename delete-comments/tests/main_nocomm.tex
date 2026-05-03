@@ -1,0 +1,28 @@
+\documentclass{article}
+
+\usepackage{comment}
+
+\begin{document}
+
+Hello, world.
+
+\begin{verbatim}
+Other times, we don't want to remove comments, such as inside
+of verbatim environments. So we protect against these cases.
+% This comment won't be removed.
+\end{verbatim}
+
+You might wonder why comment removal is so important to
+me. The reason is that, in \TeX\ communities, comments are
+rarely used as they are in programming or development
+communities. Namely, \TeX\ users typically use comments to
+\emph{remove} unwanted content rather than to comment on
+wanted content.
+
+For example, suppose you are told to correct the typo
+'hommorphism' in the following text. Can you easily do so
+with the comments?
+
+Let $f:X \to Y$ be a hommorphism.
+
+\end{document}

@@ -26,7 +26,7 @@ import xml.etree.ElementTree
 EMAIL = 'foo@bar.com'
 
 CREF_API_URL = 'https://api.crossref.org'
-PREFIX       = '10.1090'
+PREFIX       = '10.5948'
 ENDPOINTS    = [ 'prefixes', PREFIX, 'works' ]
 FILTERS      = {
     'select': 'DOI,resource',
@@ -469,9 +469,10 @@ def parse_gentags(gentag_paths):
     return gentags
         
 def collect_gentags(
+        # These Paths have been obfuscated for the public portfolio.
+        
         paths = [
-            pathlib.Path('/ams/web/journals'),
-            pathlib.Path('/ams/web/books'),            
+            pathlib.Path('.'),
         ]
 ):
 
@@ -485,7 +486,6 @@ def collect_gentags(
     gentags = parse_gentags(gentag_files)
 
     return gentags
-        
     
 def cache_data(data, file, indent = 4):
     file = pathlib.Path(f"cache/{file}.json")
@@ -581,6 +581,9 @@ def analyze_mismatches(mismatches):
     for num in mismatches:
         total += len(mismatches[num])
 
+    if not total:
+        return
+        
     Log.debug(f"Total mismatches: {total}")
     
     most_chars_changed = max(mismatches.keys())
@@ -719,7 +722,7 @@ def make_update_file(filename, header, data):
 def make_update_files(
         data,
         dois_per      = OPTS.rows,
-        filename_root = '101090-update',
+        filename_root = 'DOI-update',
         email         = OPTS.email,
 ):
 

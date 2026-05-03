@@ -10,8 +10,8 @@ There were two features missing from `sdorfehs` that I
 wished it had: the ability to (explicitly) move windows from
 frame to frame, and for focus to follow the pointer on
 click. (Yes, the latter goes against the whole spirit of the
-project, but it's a feature that I've found to be important,
-yet missing.)
+project, but it's a feature that I've found to be
+important.)
 
 Instead of trying to find a different window manager that
 fits my needs (which would likely be impossible as the niche
@@ -29,7 +29,10 @@ Also note that to build the project you'll need various X11
 (C) headers; these are typically easily installed through
 your package manager.
 
-You can find the actual repository at
+You can find the original project repository at
+[https://github.com/jcs/sdorfehs](https://github.com/jcs/sdorfehs). 
+
+You can find the actual repository of my fork at
 [https://github.com/mise-en-placebo/sdorfehs](https://github.com/mise-en-placebo/sdorfehs).
 
 ---

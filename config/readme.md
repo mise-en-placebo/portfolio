@@ -105,7 +105,6 @@ is a perfectly acceptable entry/name for your `.bashrc`:
             "target":"$HOME/.bashrc",
             "exclude": []
         },
-
 ```
 
 Using this entry, you would generate and install your
@@ -247,3 +246,10 @@ Finally, running `config install tmux` will copy the
 host-specific configuration from `configs/configs/tmux` to
 `~/.tmux.conf`.
 
+## Notes
+
+For the purposes of privacy and security, I have removed the
+vast majority of my configurations from the portfolio,
+leaving in only a few that are benign to make public. In
+practice, I use `config` to manage around 50 or so
+configurations.

@@ -48,7 +48,7 @@ changes to the SVN repository.
 ## Usage
 
 ```
-delete-comments [--no-validate|--no-preamble|--no-bibliography|--inprod|--no-conditionals|--no-macros|--no-protection|--no-svn|--no-clean|--verbose|--debug|--quiet] file_1.tex [file_2.tex file_3.tex ...]
+delete-comments [options] file_1.tex [file_2.tex file_3.tex ...]
 ```
 
 ### Options
